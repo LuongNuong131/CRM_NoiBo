@@ -2,7 +2,7 @@
 import { createRouter, createWebHistory } from "vue-router";
 
 const router = createRouter({
-  history: createWebHistory(),
+  history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     {
       path: "/",
@@ -19,10 +19,21 @@ const router = createRouter({
       name: "crm",
       component: () => import("@/pages/CRM/index.vue"),
     },
-    // Chặn mọi đường dẫn lỗi và đẩy về trang chủ
     {
-      path: "/:pathMatch(.*)*",
-      redirect: "/",
+      path: "/bookings",
+      name: "bookings",
+      component: () => import("@/pages/Bookings/index.vue"),
+    },
+    {
+      path: "/finance",
+      name: "finance",
+      component: () => import("@/pages/Finance/index.vue"),
+    },
+    {
+      path: "/settings",
+      name: "settings",
+      // Tạm thời trỏ về Dashboard, sau này mình làm trang Settings riêng nhé
+      component: () => import("@/pages/Dashboard/index.vue"),
     },
   ],
 });

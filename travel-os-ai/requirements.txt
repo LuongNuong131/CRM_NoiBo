@@ -1,6 +1,4 @@
-fastapi
-uvicorn
-langchain
-langchain-google-genai
-pydantic>=2.9.0
-python-dotenv
+sqlalchemy
+pymysql
+geoalchemy2
+cryptography

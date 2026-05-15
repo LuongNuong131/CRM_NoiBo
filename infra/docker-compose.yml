@@ -1,50 +1,96 @@
-# travel-os-enterprise/infra/docker-compose.yml
-services:
-  mysql-spatial:
-    image: mysql:8.0
-    container_name: travel_os_mysql
-    restart: unless-stopped
-    environment:
-      MYSQL_ROOT_PASSWORD: root_password_secure
-      MYSQL_DATABASE: travel_os_db
-      MYSQL_USER: travel_admin
-      MYSQL_PASSWORD: travel_password
-      TZ: Asia/Ho_Chi_Minh
-    ports:
-      - "3307:3306" # Đổi cổng public sang 3307 để tránh xung đột với XAMPP/MySQL có sẵn
-    volumes:
-      - mysql_data:/var/lib/mysql
-      - ./mysql/init-schema.sql:/docker-entrypoint-initdb.d/init.sql
-    command: --default-authentication-plugin=mysql_native_password
-    networks:
-      - travel_os_net
+version: "3.8"
 
+services:
+  # Traefik API Gateway cho trải nghiệm định tuyến mượt mà
+  gateway:
+    image: traefik:v2.10
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--entrypoints.web.address=:80"
+    ports:
+      - "80:80"
+      - "8080:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - frontend
+      - core-service
+      - ai-service
+
+  # Cơ sở dữ liệu hỗ trợ Không gian (Spatial)
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: travel_os
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./mysql/init-schema.sql:/docker-entrypoint-initdb.d/init-schema.sql
+      - mysql_data:/var/lib/mysql
+    command: --default-authentication-plugin=mysql_native_password
+
+  # Redis cho Caching và Realtime Collaboration (Yjs/WebSocket)
   redis:
-    image: redis:7.0-alpine
-    container_name: travel_os_redis
-    restart: unless-stopped
+    image: redis:7-alpine
     ports:
       - "6379:6379"
-    command: redis-server --requirepass redis_secure_pass
-    networks:
-      - travel_os_net
+    volumes:
+      - redis_data:/data
 
-  rabbitmq:
-    image: rabbitmq:3-management-alpine
-    container_name: travel_os_rmq
-    restart: unless-stopped
-    ports:
-      - "5672:5672"
-      - "15672:15672"
+  # Kafka cho Event-Driven Architecture (Booking, Notification)
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.0
     environment:
-      RABBITMQ_DEFAULT_USER: admin
-      RABBITMQ_DEFAULT_PASS: admin123
-    networks:
-      - travel_os_net
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
 
-networks:
-  travel_os_net:
-    driver: bridge
+  kafka:
+    image: confluentinc/cp-kafka:7.4.0
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+
+  core-service:
+    build:
+      context: ../travel-os-backend/core-service
+      dockerfile: Dockerfile
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/travel_os?useSSL=false&serverTimezone=UTC
+      - SPRING_REDIS_HOST=redis
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+    depends_on:
+      - mysql
+      - redis
+      - kafka
+    labels:
+      - "traefik.http.routers.core.rule=PathPrefix(`/api/v1/core`)"
+
+  ai-service:
+    build: ../travel-os-ai
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    depends_on:
+      - redis
+    labels:
+      - "traefik.http.routers.ai.rule=PathPrefix(`/api/v1/ai`)"
+
+  frontend:
+    build: ../travel-os-frontend
+    environment:
+      - VITE_API_URL=http://localhost
+    labels:
+      - "traefik.http.routers.frontend.rule=PathPrefix(`/`)"
 
 volumes:
   mysql_data:
+  redis_data:

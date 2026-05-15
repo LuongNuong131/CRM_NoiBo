@@ -1,42 +1,40 @@
-import os  # <-- Đã thêm dòng này
-import uvicorn
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from app.models.schemas import TourRequest, TourResponse
+from sqlalchemy.orm import Session
+from app.database import get_db, engine, Base
+from app.models.location import Location
 from app.services.ai_generator import AITourGenerator
-from dotenv import load_dotenv
+from app.models.schemas import TourRequest, TourResponse
+from geoalchemy2.functions import ST_Distance_Sphere, ST_GeomFromText
 
-load_dotenv()
+# Tự động tạo bảng nếu chưa có
+Base.metadata.create_all(bind=engine)
 
-app = FastAPI(
-    title="TravelOS AI Engine",
-    description="AI-powered tour generation for Next-Gen Travel OS",
-    version="1.0.0"
-)
+app = FastAPI(title="TravelOS AI Engine & Core")
 
-# Cấu hình CORS cho Frontend gọi
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # Mở all trong môi trường dev
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-ai_generator = AITourGenerator()
+generator = AITourGenerator()
 
 @app.post("/api/v1/ai/generate-tour", response_model=TourResponse)
 async def generate_tour(request: TourRequest):
-    try:
-        # Gọi LangChain Service để sinh lịch trình
-        result = ai_generator.generate_itinerary(request.prompt)
-        return result
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    return generator.generate_itinerary(request.prompt)
+
+@app.get("/api/v1/locations/nearby")
+def get_nearby(lng: float, lat: float, radius: float = 5000, db: Session = Depends(get_db)):
+    """Tìm địa điểm trong bán kính radius (mét) dùng Spatial Query"""
+    point = f'POINT({lng} {lat})'
+    locations = db.query(Location).filter(
+        ST_Distance_Sphere(Location.coordinates, ST_GeomFromText(point, 4326)) <= radius
+    ).all()
+    return locations
 
 @app.get("/health")
 def health_check():
-    return {"status": "AI Engine is running optimally"}
-
-if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=int(os.getenv("PORT", 8000)), reload=True)
+    return {"status": "online", "engine": "FastAPI + Spatial MySQL"}
