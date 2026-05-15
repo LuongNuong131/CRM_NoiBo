@@ -3,16 +3,37 @@
     class="h-full flex flex-col glass-panel rounded-2xl overflow-hidden border border-os-border/50"
   >
     <div class="p-6 border-b border-os-border/50 bg-os-panel/30">
-      <h2 class="text-xl font-bold text-white mb-1">Trip Itinerary</h2>
+      <h2 class="text-xl font-bold text-white mb-1">
+        {{ tourStore.tourTitle }}
+      </h2>
       <p class="text-sm text-os-muted flex items-center gap-2">
-        <span>3 Days 2 Nights</span>
+        <span v-if="tourStore.itinerary.length"
+          >{{ tourStore.itinerary.length }} Days</span
+        >
+        <span v-else>0 Days</span>
         <span class="w-1 h-1 bg-os-muted rounded-full"></span>
-        <span>HCM -> Da Lat</span>
+        <span>Est. Cost: {{ tourStore.estimatedCost }}</span>
       </p>
     </div>
 
-    <div class="flex-1 overflow-y-auto p-6 space-y-6">
-      <div v-for="(day, dIndex) in itinerary" :key="day.day" class="relative">
+    <div class="flex-1 overflow-y-auto p-6 space-y-6 relative">
+      <div
+        v-if="tourStore.isGenerating"
+        class="absolute inset-0 z-20 bg-os-bg/80 backdrop-blur-sm flex flex-col items-center justify-center"
+      >
+        <div
+          class="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mb-4"
+        ></div>
+        <p class="text-indigo-400 font-medium animate-pulse">
+          AI is crafting your perfect trip...
+        </p>
+      </div>
+
+      <div
+        v-for="(day, dIndex) in tourStore.itinerary"
+        :key="day.day"
+        class="relative"
+      >
         <h3 class="text-indigo-400 font-semibold mb-4 flex items-center gap-2">
           <Calendar class="w-4 h-4" /> Day {{ day.day }}
         </h3>
@@ -22,7 +43,7 @@
         >
           <div
             v-for="(node, nIndex) in day.nodes"
-            :key="node.id"
+            :key="nIndex"
             class="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active"
           >
             <div
@@ -37,7 +58,7 @@
               <div class="flex justify-between items-start mb-1">
                 <h4 class="font-bold text-white text-sm">{{ node.title }}</h4>
                 <span
-                  class="text-xs text-os-muted bg-white/5 px-2 py-1 rounded"
+                  class="text-xs text-os-muted bg-white/5 px-2 py-1 rounded whitespace-nowrap ml-2"
                   >{{ node.time }}</span
                 >
               </div>
@@ -47,87 +68,28 @@
         </div>
       </div>
 
-      <button
-        class="w-full py-3 rounded-xl border border-dashed border-os-border hover:border-os-accent/50 hover:bg-os-accent/5 text-os-muted hover:text-white transition flex items-center justify-center gap-2 text-sm font-medium"
+      <div
+        v-if="!tourStore.itinerary.length && !tourStore.isGenerating"
+        class="text-center py-10 opacity-50"
       >
-        <Plus class="w-4 h-4" /> Add Destination
-      </button>
+        <p>Ask AI to generate a tour itinerary</p>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
-import { Calendar, MapPin, Coffee, Bed, Plus, Utensils } from "lucide-vue-next";
+import { Calendar, MapPin, Coffee, Bed, Utensils } from "lucide-vue-next";
+import { useTourStore } from "@/stores/tour";
+
+const tourStore = useTourStore();
 
 const getIcon = (type: string) => {
-  switch (type) {
-    case "attraction":
-      return MapPin;
-    case "coffee":
-      return Coffee;
-    case "hotel":
-      return Bed;
-    case "restaurant":
-      return Utensils;
-    default:
-      return MapPin;
-  }
+  const t = type.toLowerCase();
+  if (t.includes("coffee")) return Coffee;
+  if (t.includes("hotel") || t.includes("stay")) return Bed;
+  if (t.includes("restaurant") || t.includes("food") || t.includes("meal"))
+    return Utensils;
+  return MapPin; // default cho attraction
 };
-
-// Data giả lập cho timeline
-const itinerary = ref([
-  {
-    day: 1,
-    nodes: [
-      {
-        id: "1",
-        type: "attraction",
-        title: "Tập trung tại Quận 1",
-        time: "06:00 AM",
-        description: "Điểm khởi hành chính",
-      },
-      {
-        id: "2",
-        type: "coffee",
-        title: "Trạm dừng chân",
-        time: "08:30 AM",
-        description: "Ăn sáng & Nghỉ ngơi",
-      },
-      {
-        id: "3",
-        type: "attraction",
-        title: "Thác Prenn",
-        time: "14:00 PM",
-        description: "Tham quan thác",
-      },
-      {
-        id: "4",
-        type: "hotel",
-        title: "Colline Hotel",
-        time: "16:00 PM",
-        description: "Check-in khách sạn",
-      },
-    ],
-  },
-  {
-    day: 2,
-    nodes: [
-      {
-        id: "5",
-        type: "attraction",
-        title: "Lang Biang",
-        time: "08:00 AM",
-        description: "Leo núi, chụp ảnh",
-      },
-      {
-        id: "6",
-        type: "restaurant",
-        title: "Nhà hàng Leguda",
-        time: "12:00 PM",
-        description: "Buffet rau Đà Lạt",
-      },
-    ],
-  },
-]);
 </script>
