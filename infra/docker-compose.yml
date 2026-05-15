@@ -1,0 +1,53 @@
+# travel-os-enterprise/infra/docker-compose.yml
+version: "3.8"
+
+services:
+  mysql-spatial:
+    image: mysql:8.0
+    container_name: travel_os_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password_secure
+      MYSQL_DATABASE: travel_os_db
+      MYSQL_USER: travel_admin
+      MYSQL_PASSWORD: travel_password
+      TZ: Asia/Ho_Chi_Minh
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      # Map script init database vào container để tự động chạy khi khởi tạo
+      - ./mysql/init-schema.sql:/docker-entrypoint-initdb.d/init.sql
+    command: --default-authentication-plugin=mysql_native_password
+    networks:
+      - travel_os_net
+
+  redis:
+    image: redis:7.0-alpine
+    container_name: travel_os_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: redis-server --requirepass redis_secure_pass
+    networks:
+      - travel_os_net
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: travel_os_rmq
+    restart: unless-stopped
+    ports:
+      - "5672:5672" # Giao tiếp Message Broker
+      - "15672:15672" # Giao diện Management UI (http://localhost:15672)
+    environment:
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: admin123
+    networks:
+      - travel_os_net
+
+networks:
+  travel_os_net:
+    driver: bridge
+
+volumes:
+  mysql_data:
