@@ -1,6 +1,4 @@
 # travel-os-enterprise/infra/docker-compose.yml
-version: "3.8"
-
 services:
   mysql-spatial:
     image: mysql:8.0
@@ -13,10 +11,9 @@ services:
       MYSQL_PASSWORD: travel_password
       TZ: Asia/Ho_Chi_Minh
     ports:
-      - "3306:3306"
+      - "3307:3306" # Đổi cổng public sang 3307 để tránh xung đột với XAMPP/MySQL có sẵn
     volumes:
       - mysql_data:/var/lib/mysql
-      # Map script init database vào container để tự động chạy khi khởi tạo
       - ./mysql/init-schema.sql:/docker-entrypoint-initdb.d/init.sql
     command: --default-authentication-plugin=mysql_native_password
     networks:
@@ -37,8 +34,8 @@ services:
     container_name: travel_os_rmq
     restart: unless-stopped
     ports:
-      - "5672:5672" # Giao tiếp Message Broker
-      - "15672:15672" # Giao diện Management UI (http://localhost:15672)
+      - "5672:5672"
+      - "15672:15672"
     environment:
       RABBITMQ_DEFAULT_USER: admin
       RABBITMQ_DEFAULT_PASS: admin123
