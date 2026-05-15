@@ -6,7 +6,10 @@
 
     <Sidebar class="z-50" />
 
-    <div class="flex-1 flex flex-col ml-[260px] relative z-10">
+    <div
+      class="flex-1 flex flex-col relative z-10 transition-all duration-300 ease-in-out"
+      :class="appStore.isSidebarCollapsed ? 'ml-[88px]' : 'ml-[260px]'"
+    >
       <Topbar />
 
       <main class="flex-1 p-8 overflow-y-auto h-[calc(100vh-64px)]">
@@ -19,7 +22,6 @@
           >
             <Suspense v-if="Component">
               <component :is="Component" />
-
               <template #fallback>
                 <div class="flex items-center justify-center h-full w-full">
                   <div
@@ -38,4 +40,7 @@
 <script setup lang="ts">
 import Sidebar from "@/layouts/Sidebar.vue";
 import Topbar from "@/layouts/Topbar.vue";
+import { useAppStore } from "@/stores/app";
+
+const appStore = useAppStore();
 </script>

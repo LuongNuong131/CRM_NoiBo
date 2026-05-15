@@ -44,7 +44,7 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import { Sparkles } from "lucide-vue-next";
-import MapboxEngine from "@/components/map/MapboxEngine.vue";
+import MapboxEngine from "@/components/map/MapEngine.vue";
 import ItineraryBuilder from "@/components/timeline/ItineraryBuilder.vue";
 import { useTourStore } from "@/stores/tour";
 
