@@ -44,7 +44,7 @@
 <script setup lang="ts">
 import Sidebar from "@/layouts/Sidebar.vue";
 import Topbar from "@/layouts/Topbar.vue";
-import AICopilot from "@/components/common/AICopilot.vue"; // Import thêm dòng này
+import AICopilot from "@/components/common/AICopilot.vue";
 import { useAppStore } from "@/stores/app";
 
 const appStore = useAppStore();
